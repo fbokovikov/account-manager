@@ -38,6 +38,7 @@ TODO
 ```
 
 Realization details
+
 0. **Java 10** as programming language
 1. **Gradle 4.10** as build automation system
 2. **Spark** as http-framework
