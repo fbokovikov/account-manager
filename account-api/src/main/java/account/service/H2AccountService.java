@@ -41,7 +41,7 @@ public class H2AccountService implements AccountService {
     @Override
     public Account deposit(long accountId, BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new AccountApiBadRequest("Expecting amount > 0 for deposit");
+            throw new AccountApiBadRequest("Expecting amount greater than 0 for deposit");
         }
         return accountDao.updateAmount(accountId, amount);
     }
@@ -49,7 +49,7 @@ public class H2AccountService implements AccountService {
     @Override
     public Account withdraw(long accountId, BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) >= 0) {
-            throw new AccountApiBadRequest("Expecting amount < 0 for withdrawal");
+            throw new AccountApiBadRequest("Expecting amount less than 0 for withdrawal");
         }
         return accountDao.updateAmount(accountId, amount);
     }
