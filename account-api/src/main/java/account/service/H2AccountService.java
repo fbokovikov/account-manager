@@ -2,6 +2,7 @@ package account.service;
 
 import account.exception.AccountApiBadRequest;
 import account.model.Account;
+import account.model.AccountTransaction;
 import account.service.db.AccountDao;
 
 import javax.annotation.Nullable;
@@ -53,5 +54,10 @@ public class H2AccountService implements AccountService {
             throw new AccountApiBadRequest("Expecting amount < 0 for withdrawal");
         }
         return accountDao.updateAmount(accountId, amount);
+    }
+
+    @Override
+    public void transaction(AccountTransaction transaction) {
+        accountDao.transaction(transaction);
     }
 }

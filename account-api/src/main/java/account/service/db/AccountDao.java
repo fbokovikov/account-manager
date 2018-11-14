@@ -2,6 +2,7 @@ package account.service.db;
 
 import account.exception.AccountApiBadRequest;
 import account.model.Account;
+import account.model.AccountTransaction;
 
 import javax.inject.Inject;
 import javax.sql.DataSource;
@@ -28,6 +29,8 @@ public class AccountDao {
 
     private static final String LOCK_ACCOUNT = "" +
             GET_ACCOUNT + " FOR UPDATE";
+
+    private static final AccountResultSetExtractor ACCOUNT_EXTRACTOR = new AccountResultSetExtractor();
 
     private final DataSource dataSource;
 
@@ -113,9 +116,67 @@ public class AccountDao {
                 } else {
                     throw new AccountApiBadRequest("Account not found");
                 }
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("SQL Exception", e);
             }
         } catch (SQLException e) {
             throw new RuntimeException("SQL Exception", e);
         }
+    }
+
+    /**
+     * Make transaction between two accounts.
+     *
+     * <ol>
+     *     <li>Lock from account</li>
+     *     <li>Lock to account</li>
+     *     <li>Subtract amount from first account</li>
+     *     <li>Add amount to second account</li>
+     *     <li>Commit transaction</li>
+     * </ol>
+     */
+    public void transaction(AccountTransaction transaction) {
+        try (var connection = dataSource.getConnection();
+             var lockStatement = connection.prepareStatement(LOCK_ACCOUNT);
+             var updateStatement = connection.prepareStatement(UPDATE_AMOUNT)
+        ) {
+            connection.setAutoCommit(false);
+            lockStatement.setLong(1, transaction.getFromId());
+            try (var rsFrom = lockStatement.executeQuery()) {
+                Account from = ACCOUNT_EXTRACTOR.extract(rsFrom);
+                lockStatement.setLong(1, transaction.getToId());
+                try (var rsTo = lockStatement.executeQuery()) {
+                    Account to = ACCOUNT_EXTRACTOR.extract(rsTo);
+
+                    BigDecimal fromAmount = from.getAmount();
+                    BigDecimal fromFinalAmount = fromAmount.subtract(transaction.getAmount());
+                    if (fromFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new AccountApiBadRequest("Not enough amount for transfer");
+                    }
+
+                    updateStatement.setBigDecimal(1, fromFinalAmount);
+                    updateStatement.setLong(2, from.getId());
+
+                    updateStatement.executeUpdate();
+
+                    BigDecimal toAmount = to.getAmount();
+                    BigDecimal toFinalAmount = toAmount.add(transaction.getAmount());
+
+                    updateStatement.setBigDecimal(1, toFinalAmount);
+                    updateStatement.setLong(2, to.getId());
+
+                    updateStatement.executeUpdate();
+
+                    connection.commit();
+                }
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("SQL Exception", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("SQL Exception", e);
+        }
+
     }
 }

@@ -1,6 +1,7 @@
 package account.service;
 
 import account.model.Account;
+import account.model.AccountTransaction;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -45,4 +46,11 @@ public interface AccountService {
      * @return          updated account
      */
     Account withdraw(long accountId, BigDecimal amount);
+
+    /**
+     * Make money transaction between two accounts.
+     *
+     * @param transaction info about accounts and transaction amount
+    */
+    void transaction(AccountTransaction transaction);
 }

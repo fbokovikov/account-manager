@@ -1,8 +1,12 @@
 package account.controller;
 
 
+import account.controller.dto.AccountTransactionDTO;
+import account.controller.dto.AccountTransactionValidator;
+import account.controller.transformer.JsonRequestTransformer;
 import account.controller.transformer.JsonResponseTransformer;
 import account.exception.AccountApiBadRequest;
+import account.model.AccountTransaction;
 import account.model.ResponseError;
 import account.service.AccountService;
 import spark.Request;
@@ -21,6 +25,7 @@ public class AccountController implements SparkController {
 
     private static final String APPLICATION_JSON = "application/json";
 
+    private static final JsonRequestTransformer REQUEST_TRANSFORMER = new JsonRequestTransformer();
     private static final JsonResponseTransformer RESPONSE_TRANSFORMER = new JsonResponseTransformer();
 
     private final AccountService accountService;
@@ -75,6 +80,19 @@ public class AccountController implements SparkController {
 
                     response.type(APPLICATION_JSON);
                     return accountService.withdraw(accountId, amount);
+                },
+                RESPONSE_TRANSFORMER
+        );
+
+        Spark.post(
+                "/accounts/transactions",
+                (request, response) -> {
+                    String body = request.body();
+                    AccountTransactionDTO accountTransactionDto =
+                            REQUEST_TRANSFORMER.parseBody(body, AccountTransactionDTO.class);
+                    AccountTransactionValidator.validate(accountTransactionDto);
+                    accountService.transaction(accountTransactionDto.toTransaction());
+                    return accountTransactionDto;
                 },
                 RESPONSE_TRANSFORMER
         );
