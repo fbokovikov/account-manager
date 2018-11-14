@@ -21,6 +21,9 @@ public final class AccountTransactionValidator {
     public static void validate(AccountTransactionDTO transactionDTO) {
         validateId(transactionDTO.getFromId());
         validateId(transactionDTO.getToId());
+        if (transactionDTO.getFromId() == transactionDTO.getToId()) {
+            throw new AccountApiBadRequest("From should be different with to");
+        }
         validateAmount(transactionDTO.getAmount());
     }
 
