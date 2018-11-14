@@ -149,8 +149,8 @@ public class AccountDao {
                 try (var rsTo = lockStatement.executeQuery()) {
                     Account to = ACCOUNT_EXTRACTOR.extract(rsTo);
 
-                    BigDecimal fromAmount = from.getAmount();
-                    BigDecimal fromFinalAmount = fromAmount.subtract(transaction.getAmount());
+                    var fromAmount = from.getAmount();
+                    var fromFinalAmount = fromAmount.subtract(transaction.getAmount());
                     if (fromFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
                         throw new AccountApiBadRequest("Not enough amount for transfer");
                     }
@@ -160,8 +160,8 @@ public class AccountDao {
 
                     updateStatement.executeUpdate();
 
-                    BigDecimal toAmount = to.getAmount();
-                    BigDecimal toFinalAmount = toAmount.add(transaction.getAmount());
+                    var toAmount = to.getAmount();
+                    var toFinalAmount = toAmount.add(transaction.getAmount());
 
                     updateStatement.setBigDecimal(1, toFinalAmount);
                     updateStatement.setLong(2, to.getId());
