@@ -5,7 +5,6 @@ import account.model.Account;
 import account.model.AccountTransaction;
 import account.service.db.AccountDao;
 
-import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import javax.inject.Inject;
 import java.math.BigDecimal;
@@ -35,7 +34,6 @@ public class H2AccountService implements AccountService {
     }
 
     @Override
-    @Nullable
     public Optional<Account> getAccount(long accountId) {
         return accountDao.getAccount(accountId);
     }
