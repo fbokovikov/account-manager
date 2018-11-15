@@ -4,6 +4,7 @@ import account.db.DatabasePopulator;
 import account.exception.AccountApiBadRequest;
 import account.matchers.AccountMatcher;
 import account.model.Account;
+import account.module.UnitTestModule;
 import account.modules.AccountServiceModule;
 import account.modules.DataSourceModule;
 import com.google.inject.Guice;
@@ -25,16 +26,14 @@ import java.util.Optional;
  */
 public class AccountServiceTest {
 
+    private static final Injector INJECTOR = Guice.createInjector(new UnitTestModule());
+
     private AccountService accountService;
 
     @BeforeAll
     static void initDb() {
-        Injector injector = Guice.createInjector(
-                new DataSourceModule(),
-                new AccountServiceModule()
-        );
-        injector.getInstance(DatabasePopulator.class).populateDbTables();
-        AccountService accountService = injector.getInstance(AccountService.class);
+        INJECTOR.getInstance(DatabasePopulator.class).populateDbTables();
+        AccountService accountService = INJECTOR.getInstance(AccountService.class);
         accountService.createAccount(new BigDecimal("15.10"));
         accountService.createAccount(new BigDecimal("44.33"));
         accountService.createAccount(new BigDecimal("46.00"));
@@ -42,11 +41,7 @@ public class AccountServiceTest {
 
     @BeforeEach
     void initService() {
-        Injector injector = Guice.createInjector(
-                new DataSourceModule(),
-                new AccountServiceModule()
-        );
-        accountService = injector.getInstance(AccountService.class);
+        accountService = INJECTOR.getInstance(AccountService.class);
     }
 
     @Test
@@ -144,6 +139,65 @@ public class AccountServiceTest {
                 AccountMatcher.equals(expected)
         );
         Optional<Account> foundAccount = accountService.getAccount(1L);
+        MatcherAssert.assertThat(
+                foundAccount.get(),
+                AccountMatcher.equals(expected)
+        );
+    }
+
+    @Test
+    @DisplayName("Withdrawal positive amount")
+    void withdrawalPositiveAmount() {
+        AccountApiBadRequest accountApiBadRequest = Assertions.assertThrows(
+                AccountApiBadRequest.class,
+                () -> accountService.withdraw(1L, BigDecimal.ONE)
+        );
+        Assertions.assertEquals(
+                "Expecting amount less than 0 for withdrawal",
+                accountApiBadRequest.getMessage()
+        );
+    }
+
+    @Test
+    @DisplayName("Withdrawal account not found")
+    void accountNotFoundForWithdrawal() {
+        AccountApiBadRequest accountApiBadRequest = Assertions.assertThrows(
+                AccountApiBadRequest.class,
+                () -> accountService.withdraw(100L, BigDecimal.ONE.negate())
+        );
+        Assertions.assertEquals(
+                "Account not found",
+                accountApiBadRequest.getMessage()
+        );
+    }
+
+    @Test
+    @DisplayName("Withdrawal too big amount")
+    void withdrawalTooBigAmount() {
+        AccountApiBadRequest accountApiBadRequest = Assertions.assertThrows(
+                AccountApiBadRequest.class,
+                () -> accountService.withdraw(3, new BigDecimal("100").negate())
+        );
+        Assertions.assertEquals(
+                "Not enough amount for transfer",
+                accountApiBadRequest.getMessage()
+        );
+    }
+
+    @Test
+    @DisplayName("Successful withrawal")
+    void successfulWithdrawal() {
+        Account account = accountService.withdraw(3L, new BigDecimal(20).negate());
+
+        Account expected = new Account.Builder()
+                .setId(3L)
+                .setAmount(new BigDecimal(26))
+                .build();
+        MatcherAssert.assertThat(
+                account,
+                AccountMatcher.equals(expected)
+        );
+        Optional<Account> foundAccount = accountService.getAccount(3L);
         MatcherAssert.assertThat(
                 foundAccount.get(),
                 AccountMatcher.equals(expected)
