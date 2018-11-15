@@ -52,3 +52,23 @@ Realization details
 4. **H2** as in memory database
 5. **Gson** as json converter
 6. **Junit5** as testing framework
+
+Run unit tests
+```
+./gradlew :account-api:clean :account-api:test
+```
+
+Build executable jar
+```
+./gradlew :account-api:fatJar
+```
+
+Local run
+```
+nohup java -jar account-api-all-1.0-SNAPSHOT.jar &
+```
+
+Stop application
+```
+pkill -f account-api-all
+```
