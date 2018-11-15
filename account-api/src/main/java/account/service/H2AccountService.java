@@ -56,6 +56,12 @@ public class H2AccountService implements AccountService {
 
     @Override
     public void transaction(AccountTransaction transaction) {
+        if (transaction.getFromId() == transaction.getToId()) {
+            throw new AccountApiBadRequest("Accounts should be different for transaction");
+        }
+        if (transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AccountApiBadRequest("Transaction amount should be positive");
+        }
         accountDao.transaction(transaction);
     }
 }
