@@ -34,7 +34,7 @@ curl -X PUT  "localhost:4567/accounts/1/withdrawals?amount=-10" | json_pp
 
 Transaction api
 ```
-POST accounts/transactions
+POST /accounts/transactions - make transaction between accounts
 curl -X POST --data '{"fromId":1, "toId":2, "amount":4}' "localhost:4567/accounts/transactions" | json_pp
 {
    "fromId" : 1,
