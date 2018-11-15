@@ -24,7 +24,7 @@ curl -X PUT  "localhost:4567/accounts/1/deposits?amount=10.45" | json_pp
    "amount" : 20.573
 }
 
-/PUT account/:accountId/withdrawals - withdraw money from account
+PUT accounts/:accountId/withdrawals - withdraw money from account
 curl -X PUT  "localhost:4567/accounts/1/withdrawals?amount=-10" | json_pp
 {
    "amount" : 10.573,
@@ -34,6 +34,7 @@ curl -X PUT  "localhost:4567/accounts/1/withdrawals?amount=-10" | json_pp
 
 Transaction api
 ```
+POST accounts/transactions
 curl -X POST --data '{"fromId":1, "toId":2, "amount":4}' "localhost:4567/accounts/transactions" | json_pp
 {
    "fromId" : 1,
