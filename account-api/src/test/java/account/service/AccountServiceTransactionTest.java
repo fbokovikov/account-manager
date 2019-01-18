@@ -144,6 +144,14 @@ public class AccountServiceTransactionTest {
         transactions.add(CompletableFuture.runAsync(
                 () -> accountService.transaction(
                         new AccountTransaction.Builder()
+                                .setFromId(2L)
+                                .setToId(1L)
+                                .setAmount(new BigDecimal("4"))
+                                .build()),
+                executorService));
+        transactions.add(CompletableFuture.runAsync(
+                () -> accountService.transaction(
+                        new AccountTransaction.Builder()
                                 .setFromId(1L)
                                 .setToId(3L)
                                 .setAmount(new BigDecimal("2"))
@@ -160,11 +168,11 @@ public class AccountServiceTransactionTest {
         transactions.forEach(c -> c.join());
         Account expectedFirst = new Account.Builder()
                 .setId(1L)
-                .setAmount(new BigDecimal(5))
+                .setAmount(new BigDecimal(9))
                 .build();
         Account expectedSecond = new Account.Builder()
                 .setId(2L)
-                .setAmount(new BigDecimal(19))
+                .setAmount(new BigDecimal(15))
                 .build();
         Account expectedThird = new Account.Builder()
                 .setId(3L)

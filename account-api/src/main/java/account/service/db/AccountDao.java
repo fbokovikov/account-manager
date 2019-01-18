@@ -7,8 +7,10 @@ import account.model.AccountTransaction;
 import javax.inject.Inject;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Optional;
 
 /**
@@ -129,47 +131,39 @@ public class AccountDao {
      * Make transaction between two accounts.
      *
      * <ol>
-     *     <li>Lock from account</li>
-     *     <li>Lock to account</li>
+     *     <li>Order accounts by id (prevent locking)</li>
+     *     <li>Lock first account</li>
+     *     <li>Lock second account</li>
      *     <li>Subtract amount from first account</li>
      *     <li>Add amount to second account</li>
      *     <li>Commit transaction</li>
      * </ol>
      */
     public void transaction(AccountTransaction transaction) {
-        try (var connection = dataSource.getConnection();
-             var lockStatement = connection.prepareStatement(LOCK_ACCOUNT);
-             var updateStatement = connection.prepareStatement(UPDATE_AMOUNT)
-        ) {
+        try (var connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            lockStatement.setLong(1, transaction.getFromId());
-            try (var rsFrom = lockStatement.executeQuery()) {
-                Account from = ACCOUNT_EXTRACTOR.extract(rsFrom);
-                lockStatement.setLong(1, transaction.getToId());
-                try (var rsTo = lockStatement.executeQuery()) {
-                    Account to = ACCOUNT_EXTRACTOR.extract(rsTo);
 
-                    var fromAmount = from.getAmount();
-                    var fromFinalAmount = fromAmount.subtract(transaction.getAmount());
-                    if (fromFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
-                        throw new AccountApiBadRequest("Not enough amount for transfer");
-                    }
+            //sort accounts to prevent locking
+            long[] accounts = new long[] {transaction.getFromId(), transaction.getToId()};
+            Arrays.sort(accounts);
 
-                    updateStatement.setBigDecimal(1, fromFinalAmount);
-                    updateStatement.setLong(2, from.getId());
+            try {
+                Account account1 = lockAccount(connection, accounts[0]);
+                Account account2 = lockAccount(connection, accounts[1]);
 
-                    updateStatement.executeUpdate();
+                Account from = account1.getId() == transaction.getFromId() ? account1 : account2;
+                Account to = account1 == from ? account2 : account1;
 
-                    var toAmount = to.getAmount();
-                    var toFinalAmount = toAmount.add(transaction.getAmount());
-
-                    updateStatement.setBigDecimal(1, toFinalAmount);
-                    updateStatement.setLong(2, to.getId());
-
-                    updateStatement.executeUpdate();
-
-                    connection.commit();
+                var fromAmount = from.getAmount();
+                var fromFinalAmount = fromAmount.subtract(transaction.getAmount());
+                if (fromFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new AccountApiBadRequest("Not enough amount for transfer");
                 }
+
+                updateAccountAmount(connection, from.getId(), fromFinalAmount);
+                updateAccountAmount(connection, to.getId(), to.getAmount().add(transaction.getAmount()));
+
+                connection.commit();
             } catch (SQLException e) {
                 connection.rollback();
                 throw new RuntimeException("SQL Exception", e);
@@ -178,5 +172,22 @@ public class AccountDao {
             throw new RuntimeException("SQL Exception", e);
         }
 
+    }
+
+    private static Account lockAccount(Connection connection, long accountId) throws SQLException {
+        try (var lockStatement = connection.prepareStatement(LOCK_ACCOUNT)){
+            lockStatement.setLong(1, accountId);
+            try (var resultSet = lockStatement.executeQuery()) {
+                return ACCOUNT_EXTRACTOR.extract(resultSet);
+            }
+        }
+    }
+
+    private static void updateAccountAmount(Connection connection, long accountId, BigDecimal amount) throws SQLException {
+        try (var updateStatement = connection.prepareStatement(UPDATE_AMOUNT)) {
+            updateStatement.setBigDecimal(1, amount);
+            updateStatement.setLong(2, accountId);
+            updateStatement.executeUpdate();
+        }
     }
 }
